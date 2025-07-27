@@ -8,6 +8,34 @@ use Illuminate\Support\Facades\Http;
 
 class CurrencyController extends Controller
 {
+    public function getHistory(Request $request)
+{
+    $request->validate([
+        'from' => 'required|string|size:3',
+        'to' => 'required|string|size:3',
+    ]);
+
+    $historyData = [];
+    $today = new \DateTime();
+    $periodDays = 30;
+
+    // base rate (usd to gbp)
+    $currentRate = 0.7912;
+
+    for ($i = $periodDays - 1; $i >= 0; $i--) {
+        $date = (clone $today)->modify("-{$i} days");
+        $fluctuation = (rand(-50, 50) / 10000);
+        $currentRate += $fluctuation;
+
+        $historyData[] = [
+            'date' => $date->format('M j'),
+            'rate' => round($currentRate, 4)
+        ];
+    }
+
+    return response()->json(['success' => true, 'history' => $historyData]);
+}
+
 
     public function getPopularRates()
     {
