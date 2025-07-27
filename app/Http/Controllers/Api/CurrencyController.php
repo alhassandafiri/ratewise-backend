@@ -10,32 +10,59 @@ class CurrencyController extends Controller
 {
     public function getHistory(Request $request)
 {
-    $request->validate([
+    $validated = $request->validate([
         'from' => 'required|string|size:3',
         'to' => 'required|string|size:3',
     ]);
 
-    $historyData = [];
-    $today = new \DateTime();
-    $periodDays = 30;
+    try {
+        $fromCurrency = $validated['from'];
+        $toCurrency = $validated['to'];
 
-    // base rate (usd to gbp)
-    $currentRate = 0.7912;
+        $endDate = new \DateTime();
+        $startDate = (clone $endDate)->modify('-30 days');
 
-    for ($i = $periodDays - 1; $i >= 0; $i--) {
-        $date = (clone $today)->modify("-{$i} days");
-        $fluctuation = (rand(-50, 50) / 10000);
-        $currentRate += $fluctuation;
+        $startDateString = $startDate->format('Y-m-d');
+        $endDateString = $endDate->format('Y-m-d');
 
-        $historyData[] = [
-            'date' => $date->format('M j'),
-            'rate' => round($currentRate, 4)
-        ];
+        $apiUrl = "https://api.frankfurter.app/{$startDateString}..{$endDateString}?from={$fromCurrency}&to={$toCurrency}";
+
+        $response = Http::get($apiUrl);
+
+        if ($response->failed()) {
+            return response()->json(['success' => false, 'error' => 'Could not connect to Frankfurter API.'], 500);
+        }
+
+        $data = $response->json();
+
+        if (isset($data['error'])) {
+            return response()->json(['success' => false, 'error' => $data['error']], 422);
+        }
+
+        $historyData = [];
+        if (isset($data['rates'])) {
+            foreach ($data['rates'] as $dateString => $rateData) {
+                if (isset($rateData[$toCurrency])) {
+                    $date = new \DateTime($dateString);
+                    $historyData[] = [
+                        'date' => $date->format('M j'),
+                        'rate' => $rateData[$toCurrency]
+                    ];
+                }
+            }
+        }
+
+        usort($historyData, function($a, $b) {
+            return strtotime($a['date']) - strtotime($b['date']);
+        });
+
+        return response()->json(['success' => true, 'history' => $historyData]);
+
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Frankfurter getHistory error: ' . $e->getMessage());
+        return response()->json(['success' => false, 'error' => 'An unexpected server error occurred.'], 500);
     }
-
-    return response()->json(['success' => true, 'history' => $historyData]);
 }
-
 
     public function getPopularRates()
     {
