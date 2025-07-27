@@ -13,17 +13,14 @@ class CurrencyController extends Controller
     $validated = $request->validate([
         'from' => 'required|string|size:3',
         'to' => 'required|string|size:3',
+        'start_date' => 'required|date_format:Y-m-d',
     ]);
 
     try {
         $fromCurrency = $validated['from'];
         $toCurrency = $validated['to'];
-
-        $endDate = new \DateTime();
-        $startDate = (clone $endDate)->modify('-30 days');
-
-        $startDateString = $startDate->format('Y-m-d');
-        $endDateString = $endDate->format('Y-m-d');
+        $startDateString = $validated['start_date'];
+        $endDateString = (new \DateTime())->format('Y-m-d');
 
         $apiUrl = "https://api.frankfurter.app/{$startDateString}..{$endDateString}?from={$fromCurrency}&to={$toCurrency}";
 
@@ -45,16 +42,14 @@ class CurrencyController extends Controller
                 if (isset($rateData[$toCurrency])) {
                     $date = new \DateTime($dateString);
                     $historyData[] = [
-                        'date' => $date->format('M j'),
+                        'date' => $date->format('Y-m-d'),
                         'rate' => $rateData[$toCurrency]
                     ];
                 }
             }
         }
 
-        usort($historyData, function($a, $b) {
-            return strtotime($a['date']) - strtotime($b['date']);
-        });
+        usort($historyData, fn($a, $b) => strcmp($a['date'], $b['date']));
 
         return response()->json(['success' => true, 'history' => $historyData]);
 
