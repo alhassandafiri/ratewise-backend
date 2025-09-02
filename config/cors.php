@@ -6,7 +6,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['ratewise-exchange.vercel.app'],
+    'allowed_origins' => ['https://ratewise-exchange.vercel.app'],
 
     'allowed_origins_patterns' => [],
 
